@@ -29,11 +29,16 @@ my $verb3 = "#(($wordform,\\s+)*$wordform)\\s+V\\s+$vtype\\s+$comment";
 my $verb4 = "#(($wordform,\\s+)*$wordform)\\s+V\\s+$declension\\s+$vtype\\s+$comment";
 my $verb5 = "#(($wordform,\\s+)*$wordform)\\s+V\\s+$declension\\s+$case\\s+$comment";
 
-my $absheader = "--# -path=.:..\n" .
+sub maybeWF {
+    my $wf = pop ;
+    if ($wf =~ /-/) { "nonExist" } else { $wf } 
+}
+
+my $absheader = "--# -path=.:..:latin\n" .
     "abstract DictLatAbs = Cat,Structural-[here_Adv],Lexicon-[leg_N,man_N,do_V2] ** {\n" .
     "-- extracted from http://archives.nd.edu/whitaker/dictpage.htm\n" . 
     "  fun";
-my $concheader = "--# -path=.:..\n" . 
+my $concheader = "--# -path=.:..:latin\n" . 
     "concrete DictLat of DictLatAbs = CatLat,StructuralLat-[here_Adv],LexiconLat-[leg_N,man_N,do_V2] ** open Prelude, ParadigmsLat, ResLat, ExtraLat in {\n" .
     "-- extracted from http://archives.nd.edu/whitaker/dictpage.htm\n" .
     "  lin";
@@ -135,16 +140,19 @@ while (my $l = <>) {
 	    }
 	    else
 	    {
-		$conclines{$absname} = "-- SLASHSTUFF $absname : A2 $wf -- $comment\n" ;
+		# Just try smart paradigm
+		$conclines{$absname} = "    $absname = mkA \"".$wfs[0]."\" ; -- $comment\n" ;
+#		$conclines{$absname} = "-- SLASHSTUFF $absname : A2 $wf -- $comment\n" ;
 	    }
     	}
     	# Abbreviations -> Ignore
     	elsif ($wf =~ /abbr?\./) {
-    	    $conclines{$absname} = "-- IGNORED $absname : A2 $wf -- $comment\n" ;
+	    $absname =~ s/\.//; # remove dots in abbreviations
+    	    $conclines{$absname} = "    $absname = constA \"".$wfs[0]."\" ; -- $comment\n" ;
     	}
     	# Undefined -> Ignore
     	elsif ($wf =~ /undecl/) {
-    	    $conclines{$absname} = "-- IGNORED $absname : A2 $wf -- $comment\n" ;
+	    $conclines{$absname} = "    $absname = constA \"".$wfs[0]."\" ; -- $comment\n" ;
     	}
     	# Two word forms, just use both
     	elsif (@wfs == 2)
@@ -187,9 +195,10 @@ while (my $l = <>) {
     	my $gender = $3;
     	my $comment = $4;
     	@wfs = split /\s*,\s+/, $1; # word forms split into a list
-    	$wfs[0] =~ s/[\.\s]//g; # remove punctuation from word form
+	$wfs[0] =~ s/\s//g; # remove space from word form
     	$cat = "N" ;
     	$absname = $wfs[0]."_N" ;
+	my $g = $genders{$gender};
     	# Blacklisted, not handled yet
 	if ($absname ~~ @blacklist) {
 	    $conclines{$absname} = "-- BLACKLISTED $absname : N1 $wf -- Gender: $gender -- Comment: $comment\n" ;
@@ -197,18 +206,42 @@ while (my $l = <>) {
 	# strange special characters -> ingnored
     	elsif ($wf =~ /[\/\(\)]/ )
     	{
-    	    $conclines{$absname} = "-- TODO $absname : N1 $wf -- $gender -- $comment\n" ;
+	    if ($wfs[1] =~ /(.*)os\/is/) {
+		if ($gender eq "C") {
+		    $absname = $wfs[0]."_1_F_N" ;
+		    $abslines{$absname} = "$cat ; -- $comment"  ;
+		    $conclines{$absname} = "    $absname = mkN \"".$wfs[0]."\" \"".$1."is\" feminine ; -- $comment\n" ;
+		    $absname = $wfs[0]."_1_M_N" ;
+		    $abslines{$absname} = "$cat ; -- $comment"  ;
+		    $conclines{$absname} = "    $absname = mkN \"".$wfs[0]."\" \"".$1."is\" masculine ; -- $comment\n" ;
+		    $absname = $wfs[0]."_2_F_N" ;
+		    $abslines{$absname} = "$cat ; -- $comment"  ;
+		    $conclines{$absname} = "    $absname = mkN \"".$wfs[0]."\" \"".$1."is\" feminine ; -- $comment\n" ;
+		    $absname = $wfs[0]."_2_M_N" ;
+		    $conclines{$absname} = "    $absname = mkN \"".$wfs[0]."\" \"".$1."os\" masculine ; -- $comment\n" ;
+		}
+		else {
+		    $absname = $wfs[0]."_1_N" ;
+		    $abslines{$absname} = "$cat ; -- $comment"  ;
+		    $conclines{$absname} = "    $absname = mkN \"".$wfs[0]."\" \"".$1."is\" ".$g." ; -- $comment\n" ;
+		    $absname = $wfs[0]."_2_N" ;
+		    $conclines{$absname} = "    $absname = mkN \"".$wfs[0]."\" \"".$1."os\" ".$g." ; -- $comment\n" ;
+		}
+	    }
+	    else {
+		$conclines{$absname} = "-- TODO $absname : N1 $wf -- $gender -- $comment\n" ;
+	    }
     	}
     	# Wordforms contain "undecl" -> Ignored
-    	elsif ($wf =~ /undecl/ )
-    	{
-    	    $conclines{$absname} = "-- IGNORED $absname : N1 $wf -- $gender -- $comment\n" ;
-    	}
-    	# Wordforms contains abbreviation -> Ignored
-    	elsif ($wf =~ /abb(r?)\./)
-    	{
-    	    $conclines{$absname} = "-- IGNORED $absname : N1 $wf -- $gender -- $comment\n" ;
-    	}
+    	# elsif ($wf =~ /undecl/ )
+    	# {
+    	#     $conclines{$absname} = "-- IGNORED $absname : N1 $wf -- $gender -- $comment\n" ;
+    	# }
+    	# # Wordforms contains abbreviation -> Ignored
+    	# elsif ($wf =~ /abb(r?)\./)
+    	# {
+    	#     $conclines{$absname} = "-- IGNORED $absname : N1 $wf -- $gender -- $comment\n" ;
+    	# }
     	elsif(scalar(@wfs) == 1)
     	{
     	    $absname = $wfs[0]."_".$gender."_N" ;
@@ -217,19 +250,35 @@ while (my $l = <>) {
     	elsif(scalar(@wfs) == 2)
     	{
     	    my $g = $genders{$gender};
+	    # Both genders possible -> Split lexicon entry
     	    if ($gender eq "C")
     	    {
-    		$absname = $wfs[0]."_F_N" ;
-    		$abslines{$absname} = "$cat ; -- $comment" ;
-    		$conclines{$absname} = "    $absname = mkN \"".$wfs[0]."\" \"".$wfs[1]."\" feminine ; -- $comment\n" ;
-    		$absname = $wfs[0]."_M_N" ;
-    		$conclines{$absname} = "    $absname = mkN \"".$wfs[0]."\" \"".$wfs[1]."\" masculine ; -- $comment\n" ;
+		if ($wfs[1] =~ /undecl|abb/) {
+		    $absname = $wfs[0]."_F_N" ;
+		    $absname =~ s/\.//; # remove dots in abbreviations
+		    $abslines{$absname} = "$cat ; -- $comment" ;
+		    $conclines{$absname} = "    $absname = constN \"".$wfs[0]."\" feminine ; -- $comment\n" ;		   
+		    $absname = $wfs[0]."_M_N" ;
+		    $absname =~ s/\.//; # remove dots in abbreviations
+		    $conclines{$absname} = "    $absname = constN \"".$wfs[0]."\" masculine ; -- $comment\n" ;
+		}
+		else {
+		    $absname = $wfs[0]."_F_N" ;
+		    $abslines{$absname} = "$cat ; -- $comment" ;
+		    $conclines{$absname} = "    $absname = mkN \"".$wfs[0]."\" \"".$wfs[1]."\" feminine ; -- $comment\n" ;
+		    $absname = $wfs[0]."_M_N" ;
+		    $conclines{$absname} = "    $absname = mkN \"".$wfs[0]."\" \"".$wfs[1]."\" masculine ; -- $comment\n" ;
+		}
     	    }
-    	    # Unknown gender
+    	    # Unknown gender -> hope that smart paradigms work
     	    elsif ($gender eq "X")
     	    {
-    		$conclines{$absname} = "-- $absname : N1 $wf -- Gender: $gender -- Comment: $comment\n" ;
+    		$conclines{$absname} = "    $absname = mkN \"".$wfs[0]."\" ; -- $comment\n" ;
     	    }
+	    elsif ($wfs[1] =~ /undecl|abb/) {
+		$absname =~ s/\.//; # remove dots in abbreviations
+		$conclines{$absname} = "    $absname = constN \"".$wfs[0]."\" $g ; -- $comment\n" ;
+	    }
     	    else
     	    {
     		$absname = $wfs[0]."_".$gender."_N" ;
@@ -336,7 +385,7 @@ while (my $l = <>) {
 	}
 	else
 	{
-	    print "V1 Word: ".$wfs[0]." -- Comment: $comment\n";
+	    # print "V1 Word: ".$wfs[0]." -- Comment: $comment\n";
 	}
     }
     elsif ($l =~ /$verb2/)
@@ -351,7 +400,7 @@ while (my $l = <>) {
 	    $conclines{$absname} = "-- BLACKLISTED $absname : V2 $wf -- Declension: $declension -- Comment: $comment\n" ;
 	}
 	# strange special characters -> ingnored
-    	elsif ($wf =~ /[(\/\(\))]|(\s-)/ )
+    	elsif ($wf =~ /[(\/\(\))]/ )
     	{
     	    $conclines{$absname} = "-- TODO $absname : V2 $wf -- Declension: $declension -- Comment: $comment\n" ;
     	}
@@ -363,21 +412,27 @@ while (my $l = <>) {
      	    $conclines{$absname} = "    $absname = mkV \"".$wfs[1]."\" ; -- $comment\n" ;
      	}
      	elsif (scalar(@wfs) == 4)
-     	{ 
-     	    if (!$wf =~ /-/)
+     	{
+     	    if (!($wf =~ /-/))
      	    {
+		$absname = $absname."2" ;
+		$cat = "V2";
      		$conclines{$absname} = "    $absname = mkV2 (mkV \"".$wfs[1]."\" \"".$wfs[0]."\" \"".$wfs[2]."\" \"".$wfs[3]."\") ; -- $comment\n" ;
      	    }
-     	    elsif ($wfs[2] eq "-" && $wfs[3] eq "-") 
+     	    elsif ($wfs[2] =~ /-/ && $wfs[3] =~ /-/) 
      	    {
      		$conclines{$absname} = "    $absname = mkV \"".$wfs[1]."\" \"".$wfs[0]."\" nonExist nonExist ; -- $comment\n" ;
      	    }
-    	    elsif ($wfs[3] eq "-") 
+    	    elsif ($wfs[3] =~ /-/) 
     	    {
-    		$conclines{$absname} = "    $absname = mkV2 (mkV \"".$wfs[1]."\" \"".$wfs[0]."\" \"".$wfs[2]."\" nonExist ; -- $comment\n" ;
+		$absname = $absname."2" ;
+		$cat = "V2";
+    		$conclines{$absname} = "    $absname = mkV2 (mkV \"".$wfs[1]."\" \"".$wfs[0]."\" \"".$wfs[2]."\" nonExist ) ; -- $comment\n" ;
     	    }
      	}
-     	# print "V2 Word: ".$wfs[0]." -- Declension: $declension -- Comment: $comment\n";
+	else {
+	    print "PROBLEM : V2 Word: ".$wfs[0]." -- Declension: $declension -- Comment: $comment\n";
+	}
     }
     elsif ($l =~ /$verb3/)
     {
@@ -457,23 +512,24 @@ while (my $l = <>) {
 		$conclines{$absname} = "    $absname = mkV2 (mkV \"".$wfs[1]."\") ; -- $comment\n" ;
 	    }
     	}
+	elsif (scalar(@wfs) == 3 && $type eq "DEP") {
+	    print "<- HERE";
+	    $conclines{$absname} = "    $absname = mkV \"".$wfs[1]."\" \"".$wfs[0]."\" \"".(maybeWF $wfs[2])."\" ; -- $comment\n" ;
+	}
      	elsif (scalar(@wfs) == 4)
      	{
-     	    if (!$wf =~ /-/)
-     	    {
-     		if ($cat eq "V")
-		{
-		    $conclines{$absname} = "    $absname = mkV \"".$wfs[1]."\" \"".$wfs[0]."\" \"".$wfs[2]."\" \"".$wfs[3]."\"; -- $comment\n" ;
-		}
-		elsif ($cat eq "V0")
-    		{
-    		    $conclines{$absname} = "    $absname = mkV0 \"".$wfs[0]."\"; -- $comment\n" ;
-    		}
-    		else
-    		{
-    		    $conclines{$absname} = "    $absname = mkV2 (mkV \"".$wfs[1]."\" \"".$wfs[0]."\" \"".$wfs[2]."\" \"".$wfs[3]."\") ; -- $comment\n" ;
-    		}
-     	    }	
+	    if ($cat eq "V")
+	    {
+		$conclines{$absname} = "    $absname = mkV \"".$wfs[1]."\" \"".$wfs[0]."\" \"".(maybeWF $wfs[2])."\" \"".(maybeWF $wfs[3])."\"; -- $comment\n" ;
+	    }
+	    elsif ($cat eq "V0")
+	    {
+		$conclines{$absname} = "    $absname = mkV0 \"".$wfs[0]."\"; -- $comment\n" ;
+	    }
+	    else
+	    {
+		$conclines{$absname} = "    $absname = mkV2 (mkV \"".$wfs[1]."\" \"".$wfs[0]."\" \"".(maybeWF $wfs[2])."\" \"".(maybeWF $wfs[3])."\") ; -- $comment\n" ;
+	    }
      	}
 	$cat = "V" if $cat eq "V0";
     }
@@ -493,7 +549,8 @@ while (my $l = <>) {
      	}
 	else
 	{
-	    $conclines{$absname} = "-- $absname : V4 $wf -- Declension: $declension -- Case: $case -- Comment: $comment\n" ;
+	    $conclines{$absname} = "    $absname = mkV2 (mkV \"".$wfs[1]."\" \"".$wfs[0]."\" \"".(maybeWF $wfs[2])."\" \"".(maybeWF $wfs[3])."\") ".$c."_Prep ; -- $comment\n" ;
+#	    $conclines{$absname} = "-- $absname : V4 $wf -- Declension: $declension -- Case: $case -- Comment: $comment\n" ;
 	}
     	#print "V5 Word: ".$wfs[0]." -- Declension: $declension -- Case: $case -- Comment: $comment\n";
     }
