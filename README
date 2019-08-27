@@ -10,24 +10,21 @@ License: BSD for the script. Unknown for the source, therefore not redistributed
 
 Usage:
 
-  runghc MkLatin.hs
+  cat DICTPAGE.RAW | perl convert.pl
 
 Output:
 
   DictLatAbs.gf
   DictLat.gf
 
-Uses Herbert Lange's RGL implementation of Latin (darcs version of 2017-01-19 with ParadigmsLat.mkAdv added by AR)
+Uses Herbert Lange's RGL implementation of Latin
 
-Coverage of first version: 90%; 3938 missing out of 39227 entries. Marked with leading "--"
+Coverage: 37850 lemmas out of 39225 entries. Missing are 227 and ignored in the converion
+are 23
 Reasons for uncovered entries
 - uncommon category (e.g. structural words)
-- missing case in ParadigmsLat.gf, e.g. deponent verbs
-
-Matching for adjectives (A) uncertain, because we only use ParadigmsLat.gf.mkA : Str -> A
-
-Verb subcat information is uncertain, too. It is based on the src's TRANS and INTRANS flags.
-
-
+- numerals
+- single word forms that are also included in other paradigms
+- missing information and word forms
 
 
