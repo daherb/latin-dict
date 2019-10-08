@@ -1,5 +1,5 @@
 --# -path=.:..:latin
-concrete DictLat of DictLatAbs = CatLat,StructuralLat-[here_Adv],LexiconLat-[leg_N,man_N,do_V2] ** open Prelude, ParadigmsLat, ResLat, ExtraLat in {
+concrete DictLat of DictLatAbs = CatLat ** open Prelude, ParadigmsLat, ResLat, ExtraLat in {
 -- extracted from http://archives.nd.edu/whitaker/dictpage.htm
   lin
     A_N = constN "A." masculine ; -- [XXXCG] :: Aulus (Roman praenomen); (abb. A./Au.); [Absolvo, Antiquo => free, reject];

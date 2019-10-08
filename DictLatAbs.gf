@@ -1,5 +1,5 @@
 --# -path=.:..:latin
-abstract DictLatAbs = Cat,Structural-[here_Adv],Lexicon-[leg_N,man_N,do_V2] ** {
+abstract DictLatAbs = Cat ** {
 -- extracted from http://archives.nd.edu/whitaker/dictpage.htm
   fun
     A_N : N ; -- [XXXCG] :: Aulus (Roman praenomen); (abb. A./Au.); [Absolvo, Antiquo => free, reject];
